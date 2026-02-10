@@ -21,6 +21,7 @@ namespace ricaun.Revit.Installation
         /// </summary>
         /// <param name="revitVersion"></param>
         /// <returns></returns>
+        [Obsolete("AllUsers folder is deprecated since Revit 2027, the CommonApplicationData was replaced to ProgramFiles.")]
         public static string GetAllUsersAddInFolder(int revitVersion)
         {
             return GetAllUsersAddInFolder() + revitVersion;
@@ -29,6 +30,7 @@ namespace ricaun.Revit.Installation
         /// Get AllUsers AddIn Folder
         /// </summary>
         /// <returns></returns>
+        [Obsolete("AllUsers folder is deprecated since Revit 2027, the CommonApplicationData was replaced to ProgramFiles.")]
         public static string GetAllUsersAddInFolder()
         {
             return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + RevitAddInFolder;
@@ -54,6 +56,7 @@ namespace ricaun.Revit.Installation
         /// Get AllUsers ApplicationPlugins Folder
         /// </summary>
         /// <returns></returns>
+        [Obsolete("AllUsers folder is deprecated since Revit 2027, the CommonApplicationData was replaced to ProgramFiles.")]
         public static string GetAllUsersApplicationPluginsFolder()
         {
             return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData) + RevitApplicationPluginsFolder;

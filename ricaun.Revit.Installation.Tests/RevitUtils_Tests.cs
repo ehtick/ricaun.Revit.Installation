@@ -16,6 +16,7 @@ namespace ricaun.Revit.Installation.Tests
         }
 
         [Test]
+        [Obsolete]
         public void RevitUtils_Test_AllUsers()
         {
             Console.WriteLine(RevitUtils.GetAllUsersApplicationPluginsFolder());
