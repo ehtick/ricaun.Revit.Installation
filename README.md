@@ -56,11 +56,6 @@ RevitUtils.GetCurrentUserApplicationPluginsFolder();
 RevitUtils.GetCurrentUserAddInFolder();
 RevitUtils.GetCurrentUserAddInFolder(version);
 ```
-```C#
-RevitUtils.GetAllUsersApplicationPluginsFolder();
-RevitUtils.GetAllUsersAddInFolder();
-RevitUtils.GetAllUsersAddInFolder(version);
-```
 
 ### TryGetRevitVersion
 
