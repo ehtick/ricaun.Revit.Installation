@@ -35,36 +35,45 @@ namespace ricaun.Revit.Installation
             using (var mutex = new Mutex(false, bundleName))
             {
                 mutex.WaitOne(MutexMillisecondsTimeout);
-                DeleteDirectoryAndFiles(Path.Combine(applicationPluginsFolder, bundleName));
+                var bundleDirectory = Path.Combine(applicationPluginsFolder, bundleName);
+                DeleteDirectories(bundleDirectory);
+                DeletePackageContents(bundleDirectory);
                 mutex.ReleaseMutex();
             }
 
-            void DeleteDirectoryAndFiles(string directory)
+            void DeletePackageContents(string directory)
+            {
+                if (!Directory.Exists(directory)) return;
+                foreach (var file in Directory.GetFiles(directory, CONST_PACKAGE_CONTENTS))
+                {
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch { }
+                }
+            }
+
+            void DeleteDirectories(string directory)
             {
                 DirectoryInfo dir = new DirectoryInfo(directory);
                 if (!dir.Exists) return;
-                foreach (FileInfo fi in dir.GetFiles())
-                {
-                    try
-                    {
-                        fi.Delete();
-                    }
-                    catch { }
-                }
-                foreach (DirectoryInfo di in dir.GetDirectories())
-                {
-                    DeleteDirectoryAndFiles(di.FullName);
-                    try
-                    {
-                        di.Delete();
-                    }
-                    catch { }
-                }
                 try
                 {
-                    dir.Delete();
+                    dir.Delete(true);
+                    return;
                 }
                 catch { }
+                foreach (DirectoryInfo di in dir.GetDirectories())
+                {
+                    try
+                    {
+                        di.Delete(true);
+                        continue;
+                    }
+                    catch { }
+                    DeleteDirectories(di.FullName);
+                }
             }
         }
         #endregion
