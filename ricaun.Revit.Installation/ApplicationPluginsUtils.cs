@@ -26,8 +26,9 @@ namespace ricaun.Revit.Installation
         /// </summary>
         /// <param name="applicationPluginsFolder"></param>
         /// <param name="bundleName"></param>
+        /// <param name="logFileConsole"></param>
         /// <exception cref="Exception"></exception>
-        public static void DeleteBundle(string applicationPluginsFolder, string bundleName)
+        public static void DeleteBundle(string applicationPluginsFolder, string bundleName, Action<string> logFileConsole = null)
         {
             if (bundleName.EndsWith(CONST_BUNDLE) == false)
                 throw new Exception(string.Format("BundleName {0} does not end with {0}", bundleName, CONST_BUNDLE));
@@ -44,13 +45,14 @@ namespace ricaun.Revit.Installation
             void DeletePackageContents(string directory)
             {
                 if (!Directory.Exists(directory)) return;
-                foreach (var file in Directory.GetFiles(directory, CONST_PACKAGE_CONTENTS))
+                foreach (var file in Directory.GetFiles(directory, CONST_PACKAGE_CONTENTS, SearchOption.AllDirectories))
                 {
                     try
                     {
                         File.Delete(file);
+                        logFileConsole?.Invoke($"Deleted File: {file}");
                     }
-                    catch { }
+                    catch { logFileConsole?.Invoke($"Not Deleted File: {file}"); }
                 }
             }
 
@@ -60,18 +62,15 @@ namespace ricaun.Revit.Installation
                 if (!dir.Exists) return;
                 try
                 {
+                    var originalDirName = dir.FullName;
+                    dir.MoveTo(dir.FullName + "_Deleted_" + Guid.NewGuid().ToString("N"));
                     dir.Delete(true);
+                    logFileConsole?.Invoke($"Deleted Directory: {originalDirName}");
                     return;
                 }
-                catch { }
+                catch { logFileConsole?.Invoke($"Not Deleted Directory: {dir.FullName}"); }
                 foreach (DirectoryInfo di in dir.GetDirectories())
                 {
-                    try
-                    {
-                        di.Delete(true);
-                        continue;
-                    }
-                    catch { }
                     DeleteDirectories(di.FullName);
                 }
             }

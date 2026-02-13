@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using NUnit.Framework.Constraints;
+using NUnit.Framework.Internal;
 using ricaun.Revit.Installation.Tests.Utils;
 using System;
 using System.Collections.Generic;
@@ -120,8 +121,10 @@ namespace ricaun.Revit.Installation.Tests
             Assert.IsFalse(Directory.Exists(bundleDirectory));
         }
 
-        [TestCase("FakeBundleUsedByProcess")]
-        public void ApplicationPluginsUtils_Test_BundleCreatorUtils_FileUsedByProcess(string projectName)
+        [TestCase("FakeBundleUsedByProcess", 0)]
+        [TestCase("FakeBundleUsedByProcess", 1)]
+        [TestCase("FakeBundleUsedByProcess", 2)]
+        public void ApplicationPluginsUtils_Test_BundleCreatorUtils_FileUsedByProcess(string projectName, int numberFile)
         {
             projectName += Guid.NewGuid().ToString("N");
             var bundleUrl = BundleCreatorUtils.CreateBundleZip(projectName);
@@ -135,10 +138,7 @@ namespace ricaun.Revit.Installation.Tests
             {
                 Console.WriteLine(e);
                 Assert.Fail(e.Message);
-            }, (log) =>
-            {
-                Console.WriteLine(log);
-            });
+            }, Log);
 
             var bundleDirectory = Path.Combine(applicationPluginsFolder, bundleName);
             var bundlePackageContentsPath = Path.Combine(bundleDirectory, "PackageContents.xml");
@@ -150,25 +150,37 @@ namespace ricaun.Revit.Installation.Tests
             Thread.Sleep(1000);
 
             var fileName = "File.xml";
-            var files = Directory.GetFiles(bundleDirectory, fileName, SearchOption.AllDirectories);
-            Assert.IsTrue(files.Length > 0, $"File '{fileName}' not found in bundle directory.");
+            var fileNumberName = $"Number_{numberFile}.xml";
+            var files = Directory.GetFiles(bundleDirectory, fileNumberName, SearchOption.AllDirectories);
+            Assert.IsTrue(files.Length > 0, $"File '{fileNumberName}' not found in bundle directory.");
             var streams = files.Select(file => File.Open(file, FileMode.Open, FileAccess.Read, FileShare.None)).ToArray();
-
-            ApplicationPluginsUtils.DeleteBundle(applicationPluginsFolder, bundleName);
+            var filesCount = files.Select(file => Directory.GetFiles(Path.GetDirectoryName(file), "*").Length).Sum();
+            
+            ApplicationPluginsUtils.DeleteBundle(applicationPluginsFolder, bundleName, Log);
             Console.WriteLine($"Bundle Exists: {Directory.Exists(bundleDirectory)}");
 
             Assert.IsTrue(Directory.Exists(bundleDirectory));
             Assert.IsFalse(File.Exists(bundlePackageContentsPath));
+
+            var filesCountAfter = files.Select(file => Directory.GetFiles(Path.GetDirectoryName(file), "*").Length).Sum();
+            Assert.AreEqual(filesCount, filesCountAfter, "Files were deleted while they were still in use.");
+            foreach (var file in files)
+            {
+                var fileNamePath = Path.Combine(Path.GetDirectoryName(file), fileName);
+                Assert.IsTrue(File.Exists(fileNamePath), "File was deleted while is not been used, but some file and the same folder is been used.");
+            }
 
             foreach (var stream in streams)
             {
                 stream.Dispose();
             }
 
-            ApplicationPluginsUtils.DeleteBundle(applicationPluginsFolder, bundleName);
+            ApplicationPluginsUtils.DeleteBundle(applicationPluginsFolder, bundleName, Log);
             Console.WriteLine($"Bundle Exists: {Directory.Exists(bundleDirectory)}");
 
             Assert.IsFalse(Directory.Exists(bundleDirectory));
         }
+
+        private static void Log(string message) => Console.WriteLine(message);
     }
 }

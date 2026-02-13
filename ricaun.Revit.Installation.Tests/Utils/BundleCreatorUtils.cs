@@ -6,7 +6,7 @@ namespace ricaun.Revit.Installation.Tests.Utils
 {
     public static class BundleCreatorUtils
     {
-        public static string CreateBundleZip(string projectName, bool includeBundleDirectory = true, bool includeContents = true)
+        public static string CreateBundleZip(string projectName, bool includeBundleDirectory = true, bool includeContents = true, int numberFileMax = 5)
         {
             var bundleFileName = $"{projectName}.bundle";
             var zipFileName = $"{bundleFileName}.zip";
@@ -28,8 +28,15 @@ namespace ricaun.Revit.Installation.Tests.Utils
             {
                 var contentsFolder = Path.Combine(sourceBundlePath, "Contents");
                 Directory.CreateDirectory(contentsFolder);
-                var contentFile = Path.Combine(contentsFolder, "File.xml");
-                File.WriteAllText(contentFile, string.Empty);
+                for (int i = 0; i < numberFileMax; i++)
+                {
+                    var numberFolder = Path.Combine(contentsFolder, $"Number_{i}");
+                    Directory.CreateDirectory(numberFolder);
+                    var contentFile = Path.Combine(numberFolder, "File.xml");
+                    File.WriteAllText(contentFile, string.Empty);
+                    var numberFile = Path.Combine(numberFolder, $"Number_{i}.xml");
+                    File.WriteAllText(numberFile, string.Empty);
+                }
             }
 
             ZipFile.CreateFromDirectory(sourceBundlePath, zipFilePath, CompressionLevel.NoCompression, includeBundleDirectory);

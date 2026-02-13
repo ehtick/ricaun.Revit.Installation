@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [1.5.1] / 2026-02-11
 ### Updates
-- Change how `DeleteBundle` deletes the bundle folder, try to delete each folder inside and delete `PackageContents.xml`.
+- Change how `DeleteBundle` deletes the bundle folder, try to move/delete each folder inside and delete `PackageContents.xml`.
 ### Tests
 - Update `ApplicationPluginsUtils_Tests` to check if the bundle folder is deleted.
 
