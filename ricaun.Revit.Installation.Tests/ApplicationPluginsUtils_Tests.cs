@@ -17,20 +17,21 @@ namespace ricaun.Revit.Installation.Tests
         public void Setup()
         {
             // Create a temporary folder for the tests
-            var tempFolder = Path.Combine(Path.GetTempPath(), "ApplicationPlugins");
-            if (Directory.Exists(tempFolder))
+            applicationPluginsFolder = Path.Combine(Path.GetTempPath(), $"ApplicationPlugins_{Guid.NewGuid().ToString("N")}");
+            if (Directory.Exists(applicationPluginsFolder))
             {
-                Directory.Delete(tempFolder, true);
+                Directory.Delete(applicationPluginsFolder, true);
             }
-            Directory.CreateDirectory(tempFolder);
+            Directory.CreateDirectory(applicationPluginsFolder);
         }
+
+        private string applicationPluginsFolder;
 
         [TestCase("RevitAddin.DA.Tester")]
         public async Task ApplicationPluginsUtils_Test_Download_Async(string projectName)
         {
             var bundleUrl = $@"https://github.com/ricaun-io/{projectName}/releases/latest/download/{projectName}.bundle.zip";
 
-            var applicationPluginsFolder = Path.Combine(Path.GetTempPath(), "ApplicationPlugins");
             var bundleName = Path.GetFileNameWithoutExtension(bundleUrl);
 
             Console.WriteLine($"DownloadBundle: {bundleName}");
@@ -60,7 +61,6 @@ namespace ricaun.Revit.Installation.Tests
         {
             var bundleUrl = $@"https://github.com/ricaun-io/{projectName}/releases/latest/download/{projectName}.bundle.zip";
 
-            var applicationPluginsFolder = Path.Combine(Path.GetTempPath(), "ApplicationPlugins");
             var bundleName = Path.GetFileNameWithoutExtension(bundleUrl);
 
             Console.WriteLine($"DownloadBundle: {bundleName}");
@@ -92,7 +92,6 @@ namespace ricaun.Revit.Installation.Tests
             projectName += Guid.NewGuid().ToString("N");
             var bundleUrl = BundleCreatorUtils.CreateBundleZip(projectName, includeBundleDirectory, includeContents);
 
-            var applicationPluginsFolder = Path.Combine(Path.GetTempPath(), "ApplicationPlugins");
             var bundleName = Path.GetFileNameWithoutExtension(bundleUrl);
 
             Console.WriteLine($"DownloadBundle: {bundleName}");
@@ -129,7 +128,6 @@ namespace ricaun.Revit.Installation.Tests
             projectName += Guid.NewGuid().ToString("N");
             var bundleUrl = BundleCreatorUtils.CreateBundleZip(projectName);
 
-            var applicationPluginsFolder = Path.Combine(Path.GetTempPath(), "ApplicationPlugins");
             var bundleName = Path.GetFileNameWithoutExtension(bundleUrl);
 
             Console.WriteLine($"DownloadBundle: {bundleName}");
