@@ -235,9 +235,9 @@ namespace ricaun.Revit.Installation
                     var completeFileName = Path.Combine(destinationDirectoryName, fileFullName);
                     var directory = Path.GetDirectoryName(completeFileName);
 
-                    Debug.WriteLine($"{fileFullName} |\t {baseDirectory} |\t {completeFileName}");
+                    Debug.WriteLine($"{fileFullName} -\t {baseDirectory} -\t {completeFileName}");
 
-                    logFileConsole?.Invoke($"{fileFullName} |\t {baseDirectory} |\t {completeFileName}");
+                    logFileConsole?.Invoke($"{fileFullName} -\t {baseDirectory} -\t {completeFileName}");
 
                     if (!Directory.Exists(directory) && !string.IsNullOrEmpty(directory))
                         Directory.CreateDirectory(directory);
