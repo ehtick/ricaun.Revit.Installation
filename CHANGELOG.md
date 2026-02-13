@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] / 2026-02-11
+### Updates
+- Change how `DeleteBundle` deletes the bundle folder, try to move/delete each folder inside and delete `PackageContents.xml`.
+- Update `DeleteDirectories` to check if folder contains any file been used by any process, if so the deletion will be skipped.
+### Tests
+- Update `ApplicationPluginsUtils_Tests` to check if the bundle folder is deleted.
+
 ## [1.5.0] / 2026-02-10
 ### Updates
 - Obsolete `AllUsers` folder methods because of Revit 2027 changes. (Fix: #17)
@@ -104,6 +111,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - `ricaun.Revit.Installation.Tests`
 
 [vNext]: ../../compare/1.0.0...HEAD
+[1.5.1]: ../../compare/1.5.0...1.5.1
 [1.5.0]: ../../compare/1.4.0...1.5.0
 [1.4.0]: ../../compare/1.3.2...1.4.0
 [1.3.2]: ../../compare/1.3.1...1.3.2

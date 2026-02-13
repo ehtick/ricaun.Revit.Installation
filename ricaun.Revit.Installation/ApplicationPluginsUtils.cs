@@ -9,25 +9,50 @@ using System.Threading;
 namespace ricaun.Revit.Installation
 {
     /// <summary>
-    /// ApplicationPluginsUtils
-    /// <code>Based: https://github.com/ricaun-io/ricaun.Revit.Github/blob/master/ricaun.Revit.Github/Services/DownloadBundleService.cs</code>
+    /// Utility helpers to manage Revit application plugins bundles.
     /// </summary>
+    /// <remarks>
+    /// Provides functionality to delete bundles from an ApplicationPlugins folder,
+    /// download bundle ZIP files from an address and extract them, and several
+    /// internal helpers related to ZIP extraction and path handling.
+    /// Based on: https://github.com/ricaun-io/ricaun.Revit.Github/blob/master/ricaun.Revit.Github/Services/DownloadBundleService.cs
+    /// </remarks>
     public class ApplicationPluginsUtils
     {
         #region const
+        /// <summary>
+        /// File-system suffix used to identify Revit bundle folders.
+        /// </summary>
         private const string CONST_BUNDLE = ".bundle";
+
+        /// <summary>
+        /// Timeout (in milliseconds) used when waiting for a named <see cref="Mutex"/>.
+        /// </summary>
         private const int MutexMillisecondsTimeout = 10000;
+
+        /// <summary>
+        /// File name used to identify the bundle manifest file inside a bundle.
+        /// </summary>
         private const string CONST_PACKAGE_CONTENTS = "PackageContents.xml";
         #endregion
 
         #region Delete
         /// <summary>
-        /// DeleteBundle
+        /// Deletes a bundle folder and removes its bundle manifest files.
         /// </summary>
-        /// <param name="applicationPluginsFolder"></param>
-        /// <param name="bundleName"></param>
-        /// <exception cref="Exception"></exception>
-        public static void DeleteBundle(string applicationPluginsFolder, string bundleName)
+        /// <param name="applicationPluginsFolder">
+        /// The root folder that contains application plugin bundles or the full path to a single `.bundle` folder.
+        /// </param>
+        /// <param name="bundleName">
+        /// The name of the bundle directory to delete. Must end with <c>".bundle"</c>.
+        /// </param>
+        /// <param name="logFileConsole">
+        /// Optional callback invoked with human-readable log messages for file and directory operations.
+        /// </param>
+        /// <exception cref="Exception">
+        /// Thrown if <paramref name="bundleName"/> does not end with the expected <c>".bundle"</c> suffix.
+        /// </exception>
+        public static void DeleteBundle(string applicationPluginsFolder, string bundleName, Action<string> logFileConsole = null)
         {
             if (bundleName.EndsWith(CONST_BUNDLE) == false)
                 throw new Exception(string.Format("BundleName {0} does not end with {0}", bundleName, CONST_BUNDLE));
@@ -35,49 +60,105 @@ namespace ricaun.Revit.Installation
             using (var mutex = new Mutex(false, bundleName))
             {
                 mutex.WaitOne(MutexMillisecondsTimeout);
-                DeleteDirectoryAndFiles(Path.Combine(applicationPluginsFolder, bundleName));
+                var bundleDirectory = Path.Combine(applicationPluginsFolder, bundleName);
+                DeleteDirectories(bundleDirectory);
+                DeletePackageContents(bundleDirectory);
                 mutex.ReleaseMutex();
             }
 
-            void DeleteDirectoryAndFiles(string directory)
+            void DeletePackageContents(string directory)
+            {
+                if (!Directory.Exists(directory)) return;
+                foreach (var file in Directory.GetFiles(directory, CONST_PACKAGE_CONTENTS, SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        File.Delete(file);
+                        logFileConsole?.Invoke($"Deleted File: '{file}'");
+                    }
+                    catch { logFileConsole?.Invoke($"Not Deleted File: '{file}'"); }
+                }
+            }
+
+            void DeleteDirectories(string directory)
             {
                 DirectoryInfo dir = new DirectoryInfo(directory);
                 if (!dir.Exists) return;
-                foreach (FileInfo fi in dir.GetFiles())
-                {
-                    try
-                    {
-                        fi.Delete();
-                    }
-                    catch { }
-                }
+
+                // Start deleting the subdirectories first to avoid checking the same files multiple times.
+                // And if the directory contains subdirectories, it will not be deleted until all the subdirectories are deleted.
                 foreach (DirectoryInfo di in dir.GetDirectories())
                 {
-                    DeleteDirectoryAndFiles(di.FullName);
-                    try
-                    {
-                        di.Delete();
-                    }
-                    catch { }
+                    DeleteDirectories(di.FullName);
                 }
+
                 try
                 {
-                    dir.Delete();
+                    if (Directory.GetDirectories(dir.FullName).Length > 0)
+                    {
+                        throw new IOException($"Directory '{dir.FullName}' contains subdirectories and cannot be deleted.");
+                    }
+                    if (HasAnyFileInUse(dir.FullName))
+                    {
+                        throw new IOException($"Directory '{dir.FullName}' contains files that are currently in use and cannot be deleted.");
+                    }
+                    dir.Delete(true);
+                    logFileConsole?.Invoke($"Deleted Directory: '{dir.FullName}'");
+                    return;
                 }
-                catch { }
+                catch (Exception ex) { logFileConsole?.Invoke($"Not Deleted Directory: {ex.Message}"); }
+            }
+
+            bool HasAnyFileInUse(string directory)
+            {
+                if (!Directory.Exists(directory)) return false;
+                foreach (var file in Directory.GetFiles(directory, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        using (File.Open(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                    }
+                    catch { return true; }
+                }
+                return false;
             }
         }
         #endregion
 
         #region Download
         /// <summary>
-        /// Download and unzip Bundle
+        /// Downloads a bundle ZIP from the specified <paramref name="address"/> and extracts it into the
+        /// provided <paramref name="applicationPluginsFolder"/> (or into a subfolder named after the bundle).
         /// </summary>
-        /// <param name="applicationPluginsFolder">Folder of the ApplicationPlugins or the Application.bundle</param>
-        /// <param name="address"></param>
-        /// <param name="downloadFileException"></param>
-        /// <param name="logFileConsole"></param>
-        /// <returns></returns>
+        /// <param name="applicationPluginsFolder">
+        /// The destination folder that contains ApplicationPlugins bundles or the full path to a single
+        /// `.bundle` folder. If the folder does not exist it will be created.
+        /// </param>
+        /// <param name="address">
+        /// The source address (typically an HTTP(S) URL) of the bundle ZIP file to download. The file name
+        /// portion of the address is used to create a temporary ZIP file inside <paramref name="applicationPluginsFolder"/>.
+        /// </param>
+        /// <param name="downloadFileException">
+        /// Optional callback invoked when an exception occurs during download or extraction. The exception
+        /// instance is provided to the callback for logging or handling. If this callback is null, exceptions
+        /// are caught silently and the method will return <c>false</c>.
+        /// </param>
+        /// <param name="logFileConsole">
+        /// Optional callback invoked with human-readable log messages for file and directory operations
+        /// performed during download and extraction.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> if the bundle was successfully downloaded and extraction was attempted; otherwise <c>false</c>.
+        /// Note: extraction may be a no-op if the downloaded file is not a ZIP; the method still returns <c>true</c> when
+        /// no exceptions were raised during the operation.
+        /// </returns>
+        /// <remarks>
+        /// - A named <see cref="Mutex"/> based on the bundle name (derived from the ZIP file name) is used to
+        ///   avoid concurrent operations on the same bundle.
+        /// - TLS 1.2 is enabled via <see cref="System.Net.ServicePointManager"/> to ensure secure downloads.
+        /// - The temporary ZIP file is deleted after extraction attempt regardless of success or failure.
+        /// - Any exceptions that occur are forwarded to <paramref name="downloadFileException"/> if provided.
+        /// </remarks>
         public static bool DownloadBundle(string applicationPluginsFolder, string address, Action<Exception> downloadFileException = null, Action<string> logFileConsole = null)
         {
             if (!Directory.Exists(applicationPluginsFolder))
@@ -154,9 +235,9 @@ namespace ricaun.Revit.Installation
                     var completeFileName = Path.Combine(destinationDirectoryName, fileFullName);
                     var directory = Path.GetDirectoryName(completeFileName);
 
-                    Debug.WriteLine($"{fileFullName} |\t {baseDirectory} |\t {completeFileName}");
+                    Debug.WriteLine($"{fileFullName} -\t {baseDirectory} -\t {completeFileName}");
 
-                    logFileConsole?.Invoke($"{fileFullName} |\t {baseDirectory} |\t {completeFileName}");
+                    logFileConsole?.Invoke($"{fileFullName} -\t {baseDirectory} -\t {completeFileName}");
 
                     if (!Directory.Exists(directory) && !string.IsNullOrEmpty(directory))
                         Directory.CreateDirectory(directory);
