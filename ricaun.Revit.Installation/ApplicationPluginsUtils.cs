@@ -74,9 +74,9 @@ namespace ricaun.Revit.Installation
                     try
                     {
                         File.Delete(file);
-                        logFileConsole?.Invoke($"Deleted File: {file}");
+                        logFileConsole?.Invoke($"Deleted File: '{file}'");
                     }
-                    catch { logFileConsole?.Invoke($"Not Deleted File: {file}"); }
+                    catch { logFileConsole?.Invoke($"Not Deleted File: '{file}'"); }
                 }
             }
 
@@ -84,19 +84,43 @@ namespace ricaun.Revit.Installation
             {
                 DirectoryInfo dir = new DirectoryInfo(directory);
                 if (!dir.Exists) return;
-                try
-                {
-                    var originalDirName = dir.FullName;
-                    dir.MoveTo(dir.FullName + "_Deleted_" + Guid.NewGuid().ToString("N"));
-                    dir.Delete(true);
-                    logFileConsole?.Invoke($"Deleted Directory: {originalDirName}");
-                    return;
-                }
-                catch { logFileConsole?.Invoke($"Not Deleted Directory: {dir.FullName}"); }
+
+                // Start deleting the subdirectories first to avoid checking the same files multiple times.
+                // And if the directory contains subdirectories, it will not be deleted until all the subdirectories are deleted.
                 foreach (DirectoryInfo di in dir.GetDirectories())
                 {
                     DeleteDirectories(di.FullName);
                 }
+
+                try
+                {
+                    if (Directory.GetDirectories(dir.FullName).Length > 0)
+                    {
+                        throw new IOException($"Directory '{dir.FullName}' contains subdirectories and cannot be deleted.");
+                    }
+                    if (HasAnyFileInUse(dir.FullName))
+                    {
+                        throw new IOException($"Directory '{dir.FullName}' contains files that are currently in use and cannot be deleted.");
+                    }
+                    dir.Delete(true);
+                    logFileConsole?.Invoke($"Deleted Directory: '{dir.FullName}'");
+                    return;
+                }
+                catch (Exception ex) { logFileConsole?.Invoke($"Not Deleted Directory: {ex.Message}"); }
+            }
+
+            bool HasAnyFileInUse(string directory)
+            {
+                if (!Directory.Exists(directory)) return false;
+                foreach (var file in Directory.GetFiles(directory, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        using (File.Open(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                    }
+                    catch { return true; }
+                }
+                return false;
             }
         }
         #endregion
